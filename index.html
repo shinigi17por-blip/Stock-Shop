@@ -211,6 +211,16 @@
   .modal-status.ok{background:#eafaf0;color:#0b6e2a;border:1px solid #bfe9cd;}
   .modal-status.err{background:#fdecec;color:#a52020;border:1px solid #f6c7c7;}
   .modal-status.busy{background:#eef4fd;color:#0d3f77;border:1px solid #cfe2f9;}
+  .modal-divider{height:1px;background:var(--border);margin:18px 0;}
+  .autosave-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-secondary);cursor:pointer;margin:2px 2px 0;}
+  .autosave-row input{accent-color:var(--series-1);cursor:pointer;}
+  .save-row{display:flex;flex-direction:column;gap:6px;align-items:flex-start;}
+  .btn-pill{font-family:inherit;font-size:13px;font-weight:700;border:none;border-radius:999px;padding:9px 16px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;transition:transform .15s, box-shadow .15s;}
+  .btn-pill:hover{transform:translateY(-1px);}
+  .btn-save{background:#fff;color:var(--header-bg);border:1.5px solid var(--header-bg);box-shadow:0 2px 8px rgba(13,43,82,0.12);}
+  .btn-save:hover{box-shadow:0 6px 14px rgba(13,43,82,0.2);}
+  .data-status-text{font-size:11px;color:var(--text-muted);line-height:1.4;}
+  .data-status-text.err{color:var(--critical);}
   .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
   .btn{padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid var(--border);background:#fff;}
   .btn.primary{background:var(--header-bg);border-color:var(--header-bg);color:#fff;font-weight:600;}
@@ -295,6 +305,16 @@
       <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="visually-hidden">
     </div>
     <div class="modal-status" id="modalStatus"></div>
+
+    <label class="autosave-row"><input type="checkbox" id="autoSaveToggle" checked> บันทึกไฟล์ใหม่อัตโนมัติหลัง Upload</label>
+
+    <div class="modal-divider"></div>
+
+    <div class="save-row">
+      <button type="button" class="btn-pill btn-save" id="saveBtn">⭳ บันทึกไฟล์เวอร์ชันนี้ (.html)</button>
+      <div class="data-status-text" id="saveStatus"></div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn ghost" id="modalCancel">ปิด</button>
     </div>
@@ -992,6 +1012,35 @@ function parseWorkbookToDB(wb){
   return {dicts:dictLists, cols:cols, meta:{rowCount:rows.length}};
 }
 
+function downloadUpdatedFile(){
+  var statusEl = document.getElementById("saveStatus");
+  try{
+    var html = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+    html = html.replace(/loadDB\(embedded, "[^"]*"\)/, function(){
+      return 'loadDB(embedded, "' + (lastUpdatedLabel || nowLabel()) + '")';
+    });
+    html = html.replace(/<script id="embedded-data" type="application\/json">[\s\S]*?<\/script>/, function(){
+      return '<script id="embedded-data" type="application/json">' + JSON.stringify(DB) + '<\/script>';
+    });
+    var blob = new Blob([html], {type:"text/html"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    var dateStr = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = "stock_shop_dashboard_" + dateStr + ".html";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    statusEl.className = "data-status-text";
+    statusEl.textContent = "บันทึกไฟล์เรียบร้อยแล้ว (" + dateStr + ") — ไฟล์ใหม่มีข้อมูลล่าสุดฝังอยู่ พร้อมใช้งานได้ทันทีโดยไม่ต้องอัปโหลดซ้ำ";
+  }catch(err){
+    statusEl.className = "data-status-text err";
+    statusEl.textContent = "บันทึกไฟล์ไม่สำเร็จ: " + err.message;
+    console.error(err);
+  }
+}
+
 function handleFile(file){
   if (!file) return;
   setModalStatus("กำลังประมวลผลไฟล์ \""+file.name+"\" ...", "busy");
@@ -1002,7 +1051,10 @@ function handleFile(file){
       var wb = XLSX.read(data, {type:"array"});
       var newDB = parseWorkbookToDB(wb);
       loadDB(newDB, nowLabel());
-      setModalStatus("อัปเดตข้อมูลสำเร็จ ("+newDB.meta.rowCount.toLocaleString("th-TH")+" รายการ)", "ok");
+      setModalStatus("อัปเดตข้อมูลสำเร็จ ("+newDB.meta.rowCount.toLocaleString("th-TH")+" รายการ) — อย่าลืมกด \"บันทึกไฟล์เวอร์ชันนี้\" เพื่อฝังข้อมูลล่าสุดลงไฟล์ HTML", "ok");
+      if (document.getElementById("autoSaveToggle").checked){
+        downloadUpdatedFile();
+      }
       setTimeout(closeModal, 1100);
     }catch(err){
       console.error(err);
@@ -1021,6 +1073,7 @@ function initModal(){
   var fileInput = document.getElementById("fileInput");
 
   gearBtn.addEventListener("click", openModal);
+  document.getElementById("saveBtn").addEventListener("click", downloadUpdatedFile);
   cancelBtn.addEventListener("click", closeModal);
   overlay.addEventListener("click", function(e){ if (e.target===overlay) closeModal(); });
   dropZone.addEventListener("click", function(){ fileInput.click(); });
