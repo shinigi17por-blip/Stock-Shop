@@ -1016,7 +1016,7 @@ function downloadUpdatedFile(){
   try{
     var html = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
     html = html.replace(/loadDB\(embedded, "[^"]*"\)/, function(){
-      return 'loadDB(embedded, "23/08/2026 12:57")';
+      return 'loadDB(embedded, "' + lastUpdatedLabel + '")';
     });
     html = html.replace(/<script id="embedded-data" type="application\/json">[\s\S]*?<\/script>/, function(){
       return '<script id="embedded-data" type="application/json">' + JSON.stringify(DB) + '<\/script>';
@@ -1096,7 +1096,7 @@ document.addEventListener("DOMContentLoaded", function(){
   initModal();
   initTableUI();
   var embedded = JSON.parse(document.getElementById("embedded-data").textContent);
-  loadDB(embedded, "21/08/2026 17:43");
+  loadDB(embedded, "23/08/2026 13:03");
 });
 })();
 </script>
