@@ -252,7 +252,7 @@
     </div>
   </div>
   <div class="header-right">
-    <span class="meta-chip">อัปเดตล่าสุด: <b id="lastUpdated">23/08/2026 12:43</b></span>
+    <span class="meta-chip">อัปเดตล่าสุด: <b id="lastUpdated">23/08/2026 12:48</b></span>
     <span class="meta-chip"><b id="rowCountChip">79,756</b> รายการ</span>
     <button class="gear-btn" id="gearBtn" title="อัปเดตข้อมูลใหม่" aria-label="อัปเดตข้อมูลใหม่">⚙️</button>
   </div>
@@ -1016,7 +1016,7 @@ function downloadUpdatedFile(){
   try{
     var html = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
     html = html.replace(/loadDB\(embedded, "[^"]*"\)/, function(){
-      return 'loadDB(embedded, "23/08/2026 12:43")';
+      return 'loadDB(embedded, "23/08/2026 12:48")';
     });
     html = html.replace(/<script id="embedded-data" type="application\/json">[\s\S]*?<\/script>/, function(){
       return '<script id="embedded-data" type="application/json">' + JSON.stringify(DB) + '<\/script>';
