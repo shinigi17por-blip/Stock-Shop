@@ -184,6 +184,9 @@
     font-variant-numeric:tabular-nums;}
   table.data-table tbody tr:hover{background:#f8fafc;}
   table.data-table td.num{text-align:right;}
+  table.data-table tfoot td{padding:10px 12px;font-weight:700;color:var(--text-primary);background:#f1f5f9;
+    border-top:2px solid var(--gridline);white-space:nowrap;}
+  table.data-table tfoot td.total-label .total-note{font-weight:400;color:var(--text-muted);margin-left:6px;}
   .pagination{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:10px;font-size:12.5px;color:var(--text-secondary);}
   .pagination button{background:#fff;border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;}
   .pagination button:disabled{opacity:.4;cursor:not-allowed;}
@@ -753,7 +756,7 @@ function buildAggregates(mask){
     });
   }
   var products = Array.from(byProduct.values()).map(function(p){
-    return {code:p.code, name:p.name, brand:p.brand, group:p.group, balance:p.balance, amount:p.amount, shopCount:p.shops.size};
+    return {code:p.code, name:p.name, brand:p.brand, group:p.group, balance:p.balance, amount:p.amount, shopCount:p.shops.size, shopSet:p.shops};
   });
   return {products:products, shops:shops};
 }
@@ -836,6 +839,41 @@ function renderTable(){
     tbody.appendChild(trow);
   });
 
+  /* ---- Summary (Total) row: sums every row matching the filters + search, across all pages ---- */
+  var tfoot = document.getElementById("tableFoot");
+  if (!tfoot){
+    tfoot = document.createElement("tfoot");
+    tfoot.id = "tableFoot";
+    tbody.parentNode.appendChild(tfoot);
+  }
+  tfoot.innerHTML = "";
+  if (totalRows > 0){
+    var sums = {};
+    cols.forEach(function(c){ if (c.num) sums[c.key] = 0; });
+    var shopUnion = new Set();
+    rows.forEach(function(r){
+      cols.forEach(function(c){ if (c.num && c.key !== "shopCount") sums[c.key] += (r[c.key]||0); });
+      if (r.shopSet) r.shopSet.forEach(function(sh){ shopUnion.add(sh); });
+    });
+    // "Total Shop" = number of distinct shops (a shop holding several products is counted once)
+    if ("shopCount" in sums) sums.shopCount = shopUnion.size;
+
+    var firstNum = 0;
+    while (firstNum < cols.length && !cols[firstNum].num) firstNum++;
+    var trT = document.createElement("tr");
+    var tdL = document.createElement("td");
+    tdL.colSpan = Math.max(firstNum, 1);
+    tdL.className = "total-label";
+    tdL.innerHTML = 'รวมทั้งหมด<span class="total-note">('+totalRows.toLocaleString("th-TH")+' รายการ)</span>';
+    trT.appendChild(tdL);
+    for (var ci = Math.max(firstNum, 1); ci < cols.length; ci++){
+      var tdT = document.createElement("td");
+      if (cols[ci].num){ tdT.className = "num"; tdT.textContent = fmtNum(sums[cols[ci].key]||0); }
+      trT.appendChild(tdT);
+    }
+    tfoot.appendChild(trT);
+  }
+
   var pag = document.getElementById("pagination");
   pag.innerHTML = "";
   var info = document.createElement("span");
@@ -860,7 +898,14 @@ function initTableUI(){
       renderTable();
     });
   });
+  // A saved file may remember a different highlighted tab; sync it with the tab actually shown.
+  document.querySelectorAll(".tab-btn").forEach(function(b){
+    b.classList.toggle("active", b.dataset.tab === activeTab);
+  });
+  document.getElementById("tableTitle").textContent =
+    activeTab==="product" ? "รายการสินค้า (เรียงตามคงเหลือมากสุด)" : "รายชื่อร้านค้า (เรียงตามคงเหลือมากสุด)";
   var search = document.getElementById("tableSearch");
+  search.value = "";
   search.addEventListener("input", function(){
     tableSearchText = search.value.trim();
     tablePage[activeTab] = 0;
